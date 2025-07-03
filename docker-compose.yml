@@ -1,0 +1,317 @@
+version: '3.8'
+
+services:
+  # VULNERABILITY: Main vulnerable API service
+  vulnerable-api:
+    build: .
+    container_name: vulnerable-api
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000;https://+:5001
+      - ASPNETCORE_Kestrel__Limits__MaxRequestBodySize=104857600
+      - ASPNETCORE_Kestrel__Limits__MaxConcurrentConnections=1000
+      - ASPNETCORE_Kestrel__Limits__MaxConcurrentUpgradedConnections=1000
+      - ASPNETCORE_Kestrel__Limits__MaxRequestBodySize=104857600
+      - ASPNETCORE_Kestrel__Limits__MaxRequestLineSize=8192
+      - ASPNETCORE_Kestrel__Limits__MaxRequestHeadersTotalSize=32768
+      - ASPNETCORE_Kestrel__Limits__MaxRequestHeaderCount=100
+      - ASPNETCORE_Kestrel__Limits__MaxRequestBodySize=104857600
+      - ASPNETCORE_Kestrel__Limits__MaxConcurrentConnections=1000
+      - ASPNETCORE_Kestrel__Limits__MaxConcurrentUpgradedConnections=1000
+      - ASPNETCORE_Kestrel__Limits__MaxRequestBodySize=104857600
+      - ASPNETCORE_Kestrel__Limits__MaxRequestLineSize=8192
+      - ASPNETCORE_Kestrel__Limits__MaxRequestHeadersTotalSize=32768
+      - ASPNETCORE_Kestrel__Limits__MaxRequestHeaderCount=100
+    volumes:
+      - ./VulnerableApi:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/shadow:/etc/shadow:ro
+      - /etc/group:/etc/group:ro
+      - /etc/gshadow:/etc/gshadow:ro
+      - /proc:/proc:ro
+      - /sys:/sys:ro
+      - /dev:/dev:ro
+      - /boot:/boot:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /var/log:/var/log:ro
+      - /etc/ssh:/etc/ssh:ro
+      - /etc/ssl:/etc/ssl:ro
+      - /etc/certs:/etc/certs:ro
+      - /etc/keys:/etc/keys:ro
+      - /root/.ssh:/root/.ssh:ro
+      - /home:/home:ro
+      - /tmp:/tmp
+      - /var/tmp:/var/tmp
+      - /dev/shm:/dev/shm
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    network_mode: host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # VULNERABILITY: Vulnerable database service
+  vulnerable-db:
+    image: mysql:5.7
+    container_name: vulnerable-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=vulnerable_db
+      - MYSQL_USER=vulnerable_user
+      - MYSQL_PASSWORD=vulnerable_pass
+    volumes:
+      - vulnerable_db_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --skip-grant-tables --skip-networking=0 --bind-address=0.0.0.0
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Redis service
+  vulnerable-redis:
+    image: redis:4.0
+    container_name: vulnerable-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --protected-mode no --bind 0.0.0.0 --port 6379 --requirepass redis123
+    volumes:
+      - vulnerable_redis_data:/data
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable MongoDB service
+  vulnerable-mongo:
+    image: mongo:4.0
+    container_name: vulnerable-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+    volumes:
+      - vulnerable_mongo_data:/data/db
+    command: mongod --bind_ip_all --auth
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable PostgreSQL service
+  vulnerable-postgres:
+    image: postgres:9.6
+    container_name: vulnerable-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=vulnerable_db
+      - POSTGRES_USER=vulnerable_user
+      - POSTGRES_PASSWORD=vulnerable_pass
+    volumes:
+      - vulnerable_postgres_data:/var/lib/postgresql/data
+    command: postgres -c listen_addresses='*' -c password_encryption=md5
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Nginx service
+  vulnerable-nginx:
+    image: nginx:1.16
+    container_name: vulnerable-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Apache service
+  vulnerable-apache:
+    image: httpd:2.4
+    container_name: vulnerable-apache
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./apache.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ./ssl:/usr/local/apache2/conf/ssl:ro
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Node.js service
+  vulnerable-node:
+    image: node:12
+    container_name: vulnerable-node
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./node-app:/app
+    working_dir: /app
+    command: npm start
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Python service
+  vulnerable-python:
+    image: python:3.7
+    container_name: vulnerable-python
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python-app:/app
+    working_dir: /app
+    command: python app.py
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable PHP service
+  vulnerable-php:
+    image: php:7.4-apache
+    container_name: vulnerable-php
+    ports:
+      - "9000:80"
+    volumes:
+      - ./php-app:/var/www/html
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Java service
+  vulnerable-java:
+    image: openjdk:8
+    container_name: vulnerable-java
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./java-app:/app
+    working_dir: /app
+    command: java -jar app.jar
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Elasticsearch service
+  vulnerable-elasticsearch:
+    image: elasticsearch:6.8.0
+    container_name: vulnerable-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    volumes:
+      - vulnerable_elasticsearch_data:/usr/share/elasticsearch/data
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Kibana service
+  vulnerable-kibana:
+    image: kibana:6.8.0
+    container_name: vulnerable-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_URL=http://vulnerable-elasticsearch:9200
+    depends_on:
+      - vulnerable-elasticsearch
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+  # VULNERABILITY: Vulnerable Logstash service
+  vulnerable-logstash:
+    image: logstash:6.8.0
+    container_name: vulnerable-logstash
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    depends_on:
+      - vulnerable-elasticsearch
+    privileged: true
+    user: root
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+
+volumes:
+  vulnerable_db_data:
+  vulnerable_redis_data:
+  vulnerable_mongo_data:
+  vulnerable_postgres_data:
+  vulnerable_elasticsearch_data: 
